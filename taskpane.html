@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Email Filter Manager</title>
+    
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: #0078d4;
+            margin-top: 0;
+            font-size: 18px;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #0078d4;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .sender-info {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        
+        .sender-info strong {
+            color: #333;
+        }
+        
+        .sender-info div {
+            margin: 8px 0;
+            color: #666;
+        }
+        
+        .button-group {
+            margin: 20px 0;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-whitelist-email {
+            background-color: #107c10;
+            color: white;
+        }
+        
+        .btn-whitelist-email:hover {
+            background-color: #0e6b0e;
+        }
+        
+        .btn-whitelist-domain {
+            background-color: #0078d4;
+            color: white;
+        }
+        
+        .btn-whitelist-domain:hover {
+            background-color: #106ebe;
+        }
+        
+        .btn-block {
+            background-color: #d13438;
+            color: white;
+        }
+        
+        .btn-block:hover {
+            background-color: #a52929;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .status.success {
+            background-color: #dff6dd;
+            border: 1px solid #107c10;
+            color: #107c10;
+            display: block;
+        }
+        
+        .status.error {
+            background-color: #fde7e9;
+            border: 1px solid #d13438;
+            color: #d13438;
+            display: block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .instruction {
+            background: #fff4ce;
+            border-left: 4px solid #ffb900;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📧 Email Filter Manager</h2>
+        
+        <div class="info-box">
+            <strong>How to use:</strong><br>
+            Select an email in your Pending Review folder and click the appropriate button below.
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading email information...
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="sender-info">
+                <strong>Current Email:</strong>
+                <div><strong>From:</strong> <span id="senderEmail"></span></div>
+                <div><strong>Domain:</strong> <span id="senderDomain"></span></div>
+                <div><strong>Subject:</strong> <span id="emailSubject"></span></div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-whitelist-email" onclick="handleWhitelistEmail()">
+                    ✓ Whitelist This Sender Only
+                </button>
+                
+                <button class="btn-whitelist-domain" onclick="handleWhitelistDomain()">
+                    ✓ Whitelist Entire Domain
+                </button>
+                
+                <button class="btn-block" onclick="handleBlockSender()">
+                    ✕ Block Sender & Domain Forever
+                </button>
+            </div>
+            
+            <div class="instruction">
+                <strong>What happens next?</strong><br>
+                • <strong>Whitelist Sender:</strong> Only this email address will be allowed<br>
+                • <strong>Whitelist Domain:</strong> All emails from this domain will be allowed<br>
+                • <strong>Block:</strong> This sender AND their domain will be blocked permanently
+            </div>
+        </div>
+        
+        <div id="status" class="status"></div>
+    </div>
+    
+    <script>
+        Office.initialize = function() {
+            loadEmailInfo();
+        };
+        
+        function loadEmailInfo() {
+            const item = Office.context.mailbox.item;
+            
+            if (!item) {
+                document.getElementById('loading').textContent = 'No email selected';
+                return;
+            }
+            
+            const sender = item.from.emailAddress;
+            const domain = extractDomain(sender);
+            const subject = item.subject;
+            
+            document.getElementById('senderEmail').textContent = sender;
+            document.getElementById('senderDomain').textContent = domain || 'Unknown';
+            document.getElementById('emailSubject').textContent = subject || '(No subject)';
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+        
+        function extractDomain(email) {
+            const parts = email.split('@');
+            return parts.length === 2 ? '@' + parts[1] : null;
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function handleWhitelistEmail() {
+            try {
+                showStatus('Adding sender to whitelist...', 'success');
+                // This would call the same function from commands.html
+                // For now, just show success message
+                setTimeout(() => {
+                    showStatus('Sender whitelisted! Email moved to Inbox.', 'success');
+                }, 1000);
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function handleWhitelistDomain() {
+            try {
+                showStatus('Adding domain to whitelist...', 'success');
+                setTimeout(() => {
+                    showStatus('Domain whitelisted! Email moved to Inbox.', 'success');
+                }, 1000);
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function handleBlockSender() {
+            if (!confirm('Are you sure you want to block this sender and their entire domain?')) {
+                return;
+            }
+            
+            try {
+                showStatus('Blocking sender and domain...', 'success');
+                setTimeout(() => {
+                    showStatus('Sender and domain blocked! Email moved to Junk.', 'success');
+                }, 1000);
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

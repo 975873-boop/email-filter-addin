@@ -1,0 +1,297 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.2">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta http-equiv="X-UA-Compatible" content="IE=Edge" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Commands&lt;/title&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"&gt;&lt;/script&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Configuration - VERIFIED FOR STEELHAUS</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const CONFIG = {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>siteUrl: 'https://steelhausinc.sharepoint.com/sites/MailControl',</p>
+<p class="p1"><span class="Apple-converted-space">            </span>whitelistName: 'EmailWhitelist',</p>
+<p class="p1"><span class="Apple-converted-space">            </span>blocklistName: 'EmailBlocklist',</p>
+<p class="p1"><span class="Apple-converted-space">            </span>inboxFolder: 'Inbox',</p>
+<p class="p1"><span class="Apple-converted-space">            </span>junkFolder: '_Junk Email',</p>
+<p class="p1"><span class="Apple-converted-space">            </span>pendingFolder: '_Pending Review'</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>Office.initialize = function (reason) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>console.log('Email Filter Manager initialized');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function getAccessToken() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return new Promise((resolve, reject) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>Office.context.mailbox.getCallbackTokenAsync({ isRest: true }, function (result) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (result.status === Office.AsyncResultStatus.Succeeded) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>resolve(result.value);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>reject(new Error('Failed to get access token: ' + result.error.message));</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function extractDomain(email) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const parts = email.split('@');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return parts.length === 2 ? '@' + parts[1].toLowerCase() : null;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function addToSharePointList(listName, title, entryType, notes) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const token = await getAccessToken();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const siteUrl = CONFIG.siteUrl;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const checkUrl = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$filter=Title eq '${encodeURIComponent(title)}'`;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const checkResponse = await fetch(checkUrl, {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>method: 'GET',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>headers: {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Authorization': 'Bearer ' + token,</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Accept': 'application/json;odata=verbose'</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!checkResponse.ok) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error(`Failed to check ${listName}: ${checkResponse.statusText}`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const checkData = await checkResponse.json();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (checkData.d &amp;&amp; checkData.d.results &amp;&amp; checkData.d.results.length &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>console.log(`Entry ${title} already exists in ${listName}`);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return { success: true, alreadyExists: true };</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const digestResponse = await fetch(`${siteUrl}/_api/contextinfo`, {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>method: 'POST',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>headers: {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Authorization': 'Bearer ' + token,</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Accept': 'application/json;odata=verbose'</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!digestResponse.ok) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Failed to get form digest');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const digestData = await digestResponse.json();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const digest = digestData.d.GetContextWebInformation.FormDigestValue;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const addUrl = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items`;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const itemData = {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'__metadata': { 'type': `SP.Data.${listName}ListItem` },</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Title': title,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'EntryType': entryType,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'DateAdded': new Date().toISOString(),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Notes': notes || ''</p>
+<p class="p1"><span class="Apple-converted-space">                </span>};</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const addResponse = await fetch(addUrl, {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>method: 'POST',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>headers: {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Authorization': 'Bearer ' + token,</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Accept': 'application/json;odata=verbose',</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'Content-Type': 'application/json;odata=verbose',</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>'X-RequestDigest': digest</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>body: JSON.stringify(itemData)</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (addResponse.ok) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>console.log(`Successfully added ${title} to ${listName}`);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return { success: true, alreadyExists: false };</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const errorText = await addResponse.text();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error(`Failed to add to ${listName}: ${errorText}`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.error('Error in addToSharePointList:', error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>throw error;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function moveEmailToFolder(itemId, folderName) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return new Promise((resolve, reject) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>Office.context.mailbox.item.move(folderName, function (result) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (result.status === Office.AsyncResultStatus.Succeeded) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>console.log(`Email moved to ${folderName}`);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>resolve(result);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>console.error(`Failed to move email: ${result.error.message}`);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>reject(new Error(result.error.message));</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function showNotification(message, type = 'informational') {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const notification = {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>type: type === 'error'<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>? Office.MailboxEnums.ItemNotificationMessageType.ErrorMessage<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>: Office.MailboxEnums.ItemNotificationMessageType.InformationalMessage,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>message: message,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>icon: 'icon1',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>persistent: false</p>
+<p class="p1"><span class="Apple-converted-space">            </span>};</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>Office.context.mailbox.item.notificationMessages.replaceAsync('emailFilter', notification);</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setTimeout(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>Office.context.mailbox.item.notificationMessages.removeAsync('emailFilter');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}, 5000);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function whitelistEmail(event) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification('Adding sender to whitelist...');</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const item = Office.context.mailbox.item;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const from = item.from;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!from || !from.emailAddress) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Could not get sender email address');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const sender = from.emailAddress.toLowerCase();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const result = await addToSharePointList(</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>CONFIG.whitelistName,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>sender,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Email',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>`Added from Pending Review on ${new Date().toLocaleString()}`</p>
+<p class="p1"><span class="Apple-converted-space">                </span>);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (result.alreadyExists) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showNotification(`${sender} is already whitelisted`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showNotification(`Whitelisted ${sender}`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>await moveEmailToFolder(item.itemId, CONFIG.inboxFolder);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.error('Error in whitelistEmail:', error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification(`Error: ${error.message}`, 'error');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function whitelistDomain(event) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification('Adding domain to whitelist...');</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const item = Office.context.mailbox.item;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const from = item.from;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!from || !from.emailAddress) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Could not get sender email address');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const sender = from.emailAddress.toLowerCase();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const domain = extractDomain(sender);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!domain) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Could not extract domain from email address');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const result = await addToSharePointList(</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>CONFIG.whitelistName,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>domain,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Domain',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>`Added from Pending Review on ${new Date().toLocaleString()}`</p>
+<p class="p1"><span class="Apple-converted-space">                </span>);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (result.alreadyExists) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showNotification(`${domain} is already whitelisted`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showNotification(`Whitelisted ${domain}`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>await moveEmailToFolder(item.itemId, CONFIG.inboxFolder);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.error('Error in whitelistDomain:', error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification(`Error: ${error.message}`, 'error');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function blockSender(event) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification('Blocking sender and domain...');</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const item = Office.context.mailbox.item;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const from = item.from;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!from || !from.emailAddress) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Could not get sender email address');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const sender = from.emailAddress.toLowerCase();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const domain = extractDomain(sender);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!domain) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>throw new Error('Could not extract domain from email address');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>await addToSharePointList(</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>CONFIG.blocklistName,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>sender,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Email',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>`Blocked from Pending Review on ${new Date().toLocaleString()}`</p>
+<p class="p1"><span class="Apple-converted-space">                </span>);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>await addToSharePointList(</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>CONFIG.blocklistName,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>domain,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'Domain',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>`Blocked from Pending Review on ${new Date().toLocaleString()}`</p>
+<p class="p1"><span class="Apple-converted-space">                </span>);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification(`Blocked ${sender} and ${domain}`);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>await moveEmailToFolder(item.itemId, CONFIG.junkFolder);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.error('Error in blockSender:', error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showNotification(`Error: ${error.message}`, 'error');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>event.completed();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>window.whitelistEmail = whitelistEmail;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>window.whitelistDomain = whitelistDomain;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>window.blockSender = blockSender;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
